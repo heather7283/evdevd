@@ -2,8 +2,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <wait.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <linux/input.h>
 
