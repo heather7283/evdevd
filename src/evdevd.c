@@ -23,7 +23,7 @@ static void on_sigterm(int) {
 static void run(const char *cmd, const struct input_event *ev) {
     char ts[64], type[32], code[32], value[32];
 
-    snprintf(ts, sizeof(ts), "%ld.%lu", ev->time.tv_sec, ev->time.tv_usec);
+    snprintf(ts, sizeof(ts), "%ld.%lu", ev->input_event_sec, ev->input_event_usec);
     snprintf(type, sizeof(type), "%hu", ev->type);
     snprintf(code, sizeof(code), "%hu", ev->code);
     snprintf(value, sizeof(value), "%u", ev->value);
