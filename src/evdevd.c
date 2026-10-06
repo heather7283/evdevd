@@ -3,11 +3,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <getopt.h>
+#include <limits.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <linux/input.h>
 
 #include "rule.h"
+#include "utils.h"
 #include "xmalloc.h"
 
 static bool running = true;
@@ -70,19 +73,42 @@ static bool match(const struct input_event *event, const struct rule *rule) {
         && match_one(event->value, rule->matchers[RULE_MATCHER_LIST_VALUE]);
 }
 
+static void usage(FILE *fp) {
+    fprintf(fp, "Usage: evdevd [-h] [-d FD] DEVICE RULE...\n");
+}
+
 int main(int argc, char **argv) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: evdevd DEVICE RULE...\n");
+    int notification_fd = -1;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "hd:")) > 0) switch (opt) {
+    case '?':
+        usage(stderr);
+        return 1;
+    case 'h':
+        usage(stdout);
+        return 0;
+    case 'd':
+        long n;
+        if (!parse_number(optarg, &n, 0, INT_MAX)) {
+            return 1;
+        }
+        notification_fd = n;
+        break;
+    }
+
+    if (argc - optind < 2) {
+        usage(stderr);
         return 1;
     }
 
-    const char *dev = argv[1];
+    const char *dev = argv[optind];
 
-    const unsigned n_rules = argc - 2;
+    const unsigned n_rules = argc - optind - 1;
     struct rule *rules = xzalloc(sizeof(rules[0]) * n_rules);
 
     for (unsigned i = 0; i < n_rules; i++) {
-        char *rule = argv[2 + i];
+        char *rule = argv[optind + 1 + i];
         if (!parse_rule(rule, &rules[i])) {
             fprintf(stderr, "Invalid rule: %s\n", rule);
             return 1;
@@ -113,6 +139,17 @@ int main(int argc, char **argv) {
         .sa_handler = on_sigterm,
         .sa_flags = SA_RESETHAND,
     }, nullptr);
+
+    if (notification_fd >= 0) {
+        ssize_t ret = 0;
+        do {
+            ret = write(notification_fd, "\n", 1);
+        } while (ret < 0 && errno == EINTR);
+        if (ret < 0) {
+            fprintf(stderr, "failed to notify on fd %d: %m\n", notification_fd);
+            return 1;
+        }
+    }
 
     struct input_event events[32];
     while (running) {

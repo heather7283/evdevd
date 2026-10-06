@@ -1,39 +1,38 @@
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <stdio.h>
-#include <errno.h>
 
 #include "rule.h"
+#include "utils.h"
 #include "xmalloc.h"
-
-static bool parse_number(char *src, unsigned *out) {
-    if (!*src) {
-        fprintf(stderr, "expected number\n");
-        return false;
-    }
-
-    errno = 0;
-    char *endptr;
-    *out = strtoul(src, &endptr, 0);
-
-    if (errno || !endptr || *endptr) {
-        fprintf(stderr, "invalid number: %s\n", src);
-        return false;
-    }
-
-    return true;
-}
 
 static bool parse_matcher(char *src, struct rule_matcher *out) {
     // either a number of a range
     char *dash = strchr(src, '-');
     if (!dash) {
+        long n;
+        if (!parse_number(src, &n, 0, UINT_MAX)) {
+            return false;
+        }
+
         out->type = RULE_MATCHER_VALUE;
-        return parse_number(src, &out->value);
+        out->value = n;
+        return true;
+    } else if (dash == src || !*(dash + 1)) {
+        fprintf(stderr, "expected number\n");
+        return false;
     } else {
-        out->type = RULE_MATCHER_RANGE;
         *dash = '\0';
-        return parse_number(src, &out->range.start) && parse_number(dash + 1, &out->range.end);
+        long start, end;
+        if (!parse_number(src, &start, 0, UINT_MAX) || !parse_number(dash + 1, &end, 0, UINT_MAX)) {
+            return false;
+        }
+
+        out->type = RULE_MATCHER_RANGE;
+        out->range.start = start;
+        out->range.end = end;
+        return true;
     }
 }
 

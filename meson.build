@@ -12,6 +12,7 @@ add_project_arguments([
 sources = [
   'src/evdevd.c',
   'src/rule.c',
+  'src/utils.c',
   'src/xmalloc.c',
 ]
 
