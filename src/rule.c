@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "rule.h"
@@ -12,7 +13,7 @@ static bool parse_matcher(char *src, struct rule_matcher *out) {
     char *dash = strchr(src, '-');
     if (!dash) {
         long n;
-        if (!parse_number(src, &n, 0, UINT_MAX)) {
+        if (!parse_number(src, &n, 0, INT32_MAX)) {
             return false;
         }
 
@@ -25,7 +26,9 @@ static bool parse_matcher(char *src, struct rule_matcher *out) {
     } else {
         *dash = '\0';
         long start, end;
-        if (!parse_number(src, &start, 0, UINT_MAX) || !parse_number(dash + 1, &end, 0, UINT_MAX)) {
+        const bool res = parse_number(src, &start, 0, INT32_MAX)
+                      && parse_number(dash + 1, &end, 0, INT32_MAX);
+        if (!res) {
             return false;
         }
 
